@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to Investment Portfolios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The SPA is designed as a guided, single-page journey, breaking the report into thematic, interactive sections rather than a linear document. The structure is: 1) A welcoming introduction. 2) An interactive "Portfolio Explorer" where users can select a profile (e.g., Aggressive) and see a dynamic chart and description, making asset allocation tangible. 3) A "Building Blocks" section with clickable cards for exploring asset classes and investment vehicles. 4) A visual guide to US investment accounts. 5) A "Long-Term Strategy" section with an animated rebalancing simulation. This structure was chosen to transform passive reading into active exploration, allowing users to learn by doing and focusing on one core concept at a time for better comprehension. -->
+    <!-- Visualization & Content Choices: 1. Report Info: Sample Asset Allocations (90/10, 60/40, etc.). Goal: Compare portfolio types. Viz: Interactive Donut Chart (Chart.js/Canvas). Interaction: Buttons for each profile update the chart and text. Justification: Personalizes data and is more engaging than a static table. 2. Report Info: Rebalancing concept. Goal: Demonstrate portfolio drift and correction. Viz: Bar Chart (Chart.js/Canvas). Interaction: "Simulate" button animates the drift; "Rebalance" button animates the correction. Justification: Visualizing the change makes an abstract process intuitive. 3. Report Info: Definitions of asset classes/vehicles. Goal: Inform without creating a wall of text. Viz: Interactive Cards (HTML/CSS/JS). Interaction: Clicking a card reveals details. Justification: Promotes focused learning and keeps the UI clean. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #383838;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #C89B7B;
+            border-bottom-color: #C89B7B;
+        }
+        .profile-btn {
+            transition: background-color 0.3s, color 0.3s, transform 0.2s;
+        }
+        .profile-btn.active {
+            background-color: #C89B7B;
+            color: #FFFFFF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .section-fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .section-fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="main-header" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-[#383838]">
+                Portfolio Guide
+            </div>
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#intro" class="nav-link px-2 py-1">Start</a>
+                <a href="#profiles" class="nav-link px-2 py-1">Explorer</a>
+                <a href="#blocks" class="nav-link px-2 py-1">Building Blocks</a>
+                <a href="#accounts" class="nav-link px-2 py-1">Accounts</a>
+                <a href="#strategy" class="nav-link px-2 py-1">Strategy</a>
+            </div>
+             <button id="mobile-menu-button" class="md:hidden p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-[#C89B7B]">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden bg-white px-6 pb-4">
+            <a href="#intro" class="block py-2 text-center nav-link">Start</a>
+            <a href="#profiles" class="block py-2 text-center nav-link">Explorer</a>
+            <a href="#blocks" class="block py-2 text-center nav-link">Building Blocks</a>
+            <a href="#accounts" class="block py-2 text-center nav-link">Accounts</a>
+            <a href="#strategy" class="block py-2 text-center nav-link">Strategy</a>
+        </div>
+    </header>
+
+    <main>
+        <section id="intro" class="py-16 md:py-24">
+            <div class="container mx-auto px-6 text-center">
+                <h1 class="text-4xl md:text-6xl font-bold mb-4 tracking-tight text-[#4a4a4a]">Welcome to Your Financial Future</h1>
+                <p class="text-lg md:text-xl max-w-3xl mx-auto text-gray-600 mb-8">An investment portfolio is simply a collection of assets you own to help your money grow. Think of it as your personal financial toolkit, designed to help you reach your goals, whether that's a comfortable retirement, a new home, or long-term wealth.</p>
+                <a href="#profiles" class="bg-[#C89B7B] text-white font-bold py-3 px-8 rounded-full hover:bg-[#b58a6d] transition-colors text-lg">Start Exploring</a>
+            </div>
+        </section>
+
+        <section id="profiles" class="py-16 md:py-24 bg-white section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-2">Find Your Investor Identity</h2>
+                    <p class="text-lg max-w-3xl mx-auto text-gray-600">Your ideal portfolio depends on your goals, time horizon, and how you feel about risk. Select a profile below to see how these factors create different investment strategies and asset allocations.</p>
+                </div>
+                <div class="flex justify-center space-x-2 md:space-x-4 mb-8 flex-wrap gap-2">
+                    <button data-profile="conservative" class="profile-btn bg-gray-200 text-gray-700 font-semibold py-2 px-6 rounded-full">Conservative</button>
+                    <button data-profile="balanced" class="profile-btn bg-gray-200 text-gray-700 font-semibold py-2 px-6 rounded-full active">Balanced</button>
+                    <button data-profile="aggressive" class="profile-btn bg-gray-200 text-gray-700 font-semibold py-2 px-6 rounded-full">Aggressive</button>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+                    <div class="chart-container">
+                        <canvas id="portfolio-chart"></canvas>
+                    </div>
+                    <div id="portfolio-details">
+                        <h3 id="portfolio-title" class="text-2xl font-bold mb-3"></h3>
+                        <p id="portfolio-description" class="text-gray-700 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="blocks" class="py-16 md:py-24 section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-2">The Building Blocks of a Portfolio</h2>
+                    <p class="text-lg max-w-3xl mx-auto text-gray-600">A portfolio is built from different "asset classes" held in "investment vehicles." Understanding these core components is key to building a diversified strategy. Click on the cards to learn more.</p>
+                </div>
+
+                <h3 class="text-2xl font-bold text-center mb-6 text-gray-700">Core Asset Classes</h3>
+                <div class="grid md:grid-cols-3 gap-8 mb-16">
+                    <div class="card bg-white p-6 rounded-xl shadow-md cursor-pointer" onclick="toggleDetails('stocks-details')">
+                        <h4 class="text-xl font-bold mb-2">📈 Stocks (Equities)</h4>
+                        <p class="text-gray-600">The "offense" of your portfolio, designed for long-term growth by owning a piece of a company.</p>
+                        <div id="stocks-details" class="hidden mt-4 pt-4 border-t border-gray-200">
+                             <p class="text-sm text-gray-700"><b>Role:</b> Primary engine for growth through capital appreciation. <b>Risk:</b> Higher volatility, but historically the highest long-term returns.</p>
+                        </div>
+                    </div>
+                    <div class="card bg-white p-6 rounded-xl shadow-md cursor-pointer" onclick="toggleDetails('bonds-details')">
+                        <h4 class="text-xl font-bold mb-2">🛡️ Bonds (Fixed-Income)</h4>
+                        <p class="text-gray-600">The "defense" of your portfolio, providing stability and income by lending money to governments or corporations.</p>
+                        <div id="bonds-details" class="hidden mt-4 pt-4 border-t border-gray-200">
+                            <p class="text-sm text-gray-700"><b>Role:</b> Provides stability and predictable income. Acts as a cushion during stock downturns. <b>Risk:</b> Lower than stocks. Subject to credit risk and interest rate risk.</p>
+                        </div>
+                    </div>
+                    <div class="card bg-white p-6 rounded-xl shadow-md cursor-pointer" onclick="toggleDetails('cash-details')">
+                        <h4 class="text-xl font-bold mb-2">💵 Cash & Equivalents</h4>
+                        <p class="text-gray-600">The "reserves" of your portfolio, offering safety, liquidity, and emergency funds.</p>
+                        <div id="cash-details" class="hidden mt-4 pt-4 border-t border-gray-200">
+                           <p class="text-sm text-gray-700"><b>Role:</b> Provides a safety net and liquidity for opportunities. <b>Risk:</b> Lowest risk of principal loss, but subject to inflation risk over time.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-bold text-center mb-6 text-gray-700">Common Investment Vehicles</h3>
+                <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-xl font-bold mb-2">Mutual Funds</h4>
+                            <p class="text-gray-600 mb-4">The traditional choice. Pooled funds often actively managed to try and beat the market. Priced once per day.</p>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex items-start"><span class="text-[#C89B7B] mr-2">●</span><span>Mostly actively managed</span></li>
+                                <li class="flex items-start"><span class="text-[#C89B7B] mr-2">●</span><span>Generally higher costs</span></li>
+                                <li class="flex items-start"><span class="text-[#C89B7B] mr-2">●</span><span>Often have investment minimums</span></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold mb-2">ETFs (Exchange-Traded Funds)</h4>
+                            <p class="text-gray-600 mb-4">A modern, flexible alternative. Traded like stocks, usually tracking an index for low-cost diversification.</p>
+                             <ul class="space-y-2 text-sm">
+                                <li class="flex items-start"><span class="text-[#C89B7B] mr-2">●</span><span>Mostly passively managed</span></li>
+                                <li class="flex items-start"><span class="text-[#C89B7B] mr-2">●</span><span>Generally lower costs & more tax-efficient</span></li>
+                                <li class="flex items-start"><span class="text-[#C89B7B] mr-2">●</span><span>No minimums beyond a single share price</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="accounts" class="py-16 md:py-24 bg-white section-fade-in">
+             <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-2">Where to Hold Your Investments</h2>
+                    <p class="text-lg max-w-3xl mx-auto text-gray-600">In the U.S., the type of account you use is critical due to its tax implications. Your complete portfolio is the sum of assets across all your accounts. Prioritize tax-advantaged accounts for long-term goals like retirement.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="card bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <h4 class="font-bold text-lg mb-2">1. Workplace Plan (401k)</h4>
+                        <p class="text-sm text-gray-600">Start here, especially if your employer offers a match—it's free money! Contributions are often pre-tax, lowering your current taxable income. Investments grow tax-deferred.</p>
+                    </div>
+                    <div class="card bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <h4 class="font-bold text-lg mb-2">2. IRA (Individual Retirement Account)</h4>
+                        <p class="text-sm text-gray-600">A great tool you open on your own. A <b>Roth IRA</b> is powerful for many, offering 100% tax-free growth and withdrawals in retirement. A <b>Traditional IRA</b> may offer an upfront tax deduction.</p>
+                    </div>
+                    <div class="card bg-gray-50 p-6 rounded-xl border border-gray-200">
+                        <h4 class="font-bold text-lg mb-2">3. Taxable Brokerage Account</h4>
+                        <p class="text-sm text-gray-600">The most flexible account with no contribution limits or withdrawal restrictions. Use this for goals outside of retirement or after maxing out other accounts. You'll pay taxes on gains and dividends annually.</p>
+                    </div>
+                </div>
+             </div>
+        </section>
+
+        <section id="strategy" class="py-16 md:py-24 section-fade-in">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-2">Long-Term Strategy: Rebalancing</h2>
+                    <p class="text-lg max-w-3xl mx-auto text-gray-600">A portfolio needs regular maintenance. Rebalancing is a disciplined way to manage risk by bringing your portfolio back to its original target, forcing you to "sell high and buy low."</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+                    <div>
+                        <div class="chart-container" style="max-width: 100%;">
+                            <canvas id="rebalance-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <p id="rebalance-text" class="text-gray-700 leading-relaxed">Your initial portfolio has a 60% Stocks / 40% Bonds target. Over time, different growth rates will cause this mix to drift, changing your risk level. Click "Simulate Growth" to see what happens after a strong year for stocks.</p>
+                        <div class="flex space-x-4">
+                            <button id="simulate-btn" class="flex-1 bg-[#C89B7B] text-white font-semibold py-2 px-6 rounded-full hover:bg-[#b58a6d] transition-colors">Simulate Growth</button>
+                            <button id="rebalance-btn" class="flex-1 bg-gray-200 text-gray-700 font-semibold py-2 px-6 rounded-full hover:bg-gray-300 transition-colors" disabled>Rebalance</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="bg-white py-8 mt-16">
+        <div class="container mx-auto px-6 text-center text-gray-500">
+            <p>This interactive guide is for informational purposes only and does not constitute financial advice. All data is illustrative.</p>
+            <p>&copy; 2025 Portfolio Guide. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        const portfolioData = {
+            conservative: {
+                title: 'The Conservative Portfolio',
+                description: 'Primarily focused on preserving capital and generating income. This portfolio is for investors with a low tolerance for risk or a short time horizon, such as those nearing retirement. It can weather market downturns better than aggressive options, but offers lower long-term growth potential.',
+                allocations: [30, 60, 10],
+                labels: ['Stocks', 'Bonds', 'Cash'],
+                colors: ['#7CA5B8', '#A2B8A6', '#EAE0D5']
+            },
+            balanced: {
+                title: 'The Balanced Portfolio',
+                description: 'A middle-ground approach seeking a blend of growth and capital preservation. This is suitable for investors with a moderate risk tolerance and a medium-to-long time horizon. The classic 60/40 stock/bond mix aims to capture market growth while cushioning against volatility.',
+                allocations: [60, 35, 5],
+                labels: ['Stocks', 'Bonds', 'Cash'],
+                colors: ['#7CA5B8', '#A2B8A6', '#EAE0D5']
+            },
+            aggressive: {
+                title: 'The Aggressive Portfolio',
+                description: 'Designed for maximum long-term growth. This strategy is best for young investors with a high risk tolerance and a long time horizon (15+ years). They can afford to withstand significant market swings in exchange for the potential of higher returns over decades.',
+                allocations: [85, 10, 5],
+                labels: ['Stocks', 'Bonds', 'Cash'],
+                colors: ['#7CA5B8', '#A2B8A6', '#EAE0D5']
+            }
+        };
+
+        let portfolioChart;
+        const portfolioChartCtx = document.getElementById('portfolio-chart').getContext('2d');
+
+        function updatePortfolioView(profileName) {
+            const data = portfolioData[profileName];
+            
+            document.getElementById('portfolio-title').innerText = data.title;
+            document.getElementById('portfolio-description').innerText = data.description;
+
+            if (portfolioChart) {
+                portfolioChart.data.datasets[0].data = data.allocations;
+                portfolioChart.data.datasets[0].backgroundColor = data.colors;
+                portfolioChart.data.labels = data.labels;
+                portfolioChart.update();
+            } else {
+                portfolioChart = new Chart(portfolioChartCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.allocations,
+                            backgroundColor: data.colors,
+                            borderColor: '#FDFBF8',
+                            borderWidth: 4,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    font: {
+                                        size: 14,
+                                        family: 'Inter'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += context.parsed + '%';
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        const profileButtons = document.querySelectorAll('.profile-btn');
+        profileButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                profileButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                updatePortfolioView(btn.dataset.profile);
+            });
+        });
+
+        updatePortfolioView('balanced');
+
+        window.toggleDetails = function(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('hidden');
+        }
+
+        let rebalanceChart;
+        const rebalanceChartCtx = document.getElementById('rebalance-chart').getContext('2d');
+        const rebalanceText = document.getElementById('rebalance-text');
+        const simulateBtn = document.getElementById('simulate-btn');
+        const rebalanceBtn = document.getElementById('rebalance-btn');
+
+        const rebalanceInitialData = {
+            labels: ['Target Allocation'],
+            datasets: [
+                { label: 'Stocks', data: [60], backgroundColor: '#7CA5B8' },
+                { label: 'Bonds', data: [40], backgroundColor: '#A2B8A6' }
+            ]
+        };
+        const rebalanceDriftedData = [80, 48];
+        const rebalanceDriftedPercents = [
+            (rebalanceDriftedData[0] / (rebalanceDriftedData[0] + rebalanceDriftedData[1]) * 100).toFixed(1),
+            (rebalanceDriftedData[1] / (rebalanceDriftedData[0] + rebalanceDriftedData[1]) * 100).toFixed(1)
+        ];
+
+        function initRebalanceChart() {
+            if (rebalanceChart) {
+                rebalanceChart.destroy();
+            }
+            rebalanceChart = new Chart(rebalanceChartCtx, {
+                type: 'bar',
+                data: JSON.parse(JSON.stringify(rebalanceInitialData)),
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, max: 100, display: false },
+                        y: { stacked: true, display: false }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.raw}%`
+                            }
+                        }
+                    }
+                }
+            });
+            rebalanceText.textContent = 'Your initial portfolio has a 60% Stocks / 40% Bonds target. Over time, different growth rates will cause this mix to drift. Click "Simulate Growth" to see what happens after a strong year for stocks.';
+            simulateBtn.disabled = false;
+            rebalanceBtn.disabled = true;
+        }
+
+        simulateBtn.addEventListener('click', () => {
+            rebalanceChart.data.labels = ['Drifted Allocation'];
+            rebalanceChart.data.datasets[0].data = [rebalanceDriftedPercents[0]];
+            rebalanceChart.data.datasets[1].data = [rebalanceDriftedPercents[1]];
+            rebalanceChart.update();
+            rebalanceText.textContent = `After a good year for stocks, your portfolio has drifted to ${rebalanceDriftedPercents[0]}% stocks and ${rebalanceDriftedPercents[1]}% bonds. It is now riskier than you intended. Click "Rebalance" to restore your target.`;
+            simulateBtn.disabled = true;
+            rebalanceBtn.disabled = false;
+        });
+
+        rebalanceBtn.addEventListener('click', () => {
+            rebalanceChart.data.labels = ['Rebalanced Allocation'];
+            rebalanceChart.data.datasets[0].data = [60];
+            rebalanceChart.data.datasets[1].data = [40];
+            rebalanceChart.update();
+            rebalanceText.textContent = 'You have sold some stocks and bought bonds, returning to your 60/40 target. This locks in gains and manages risk. Click "Simulate Growth" to restart.';
+            rebalanceBtn.disabled = true;
+            simulateBtn.disabled = false;
+        });
+
+        initRebalanceChart();
+        
+        const sections = document.querySelectorAll('.section-fade-in');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const header = document.getElementById('main-header');
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        sections.forEach(section => {
+            observer.observe(section);
+        });
+        
+        const scrollObserver = new IntersectionObserver((entries) => {
+             entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${id}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, { rootMargin: `-${header.offsetHeight}px 0px 0px 0px`, threshold: 0.3 });
+
+        document.querySelectorAll('main section').forEach(section => {
+           scrollObserver.observe(section);
+        });
+
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        mobileMenu.addEventListener('click', (e) => {
+            if(e.target.tagName === 'A'){
+                 mobileMenu.classList.add('hidden');
+            }
+        })
+    });
+    </script>
+</body>
+</html>
